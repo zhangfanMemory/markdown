@@ -87,7 +87,8 @@ epoll ：
 ## 讲一下什么Reactor 和 Proactor
 
 Reactor包含如下角色：
-
+![](2023-04-02-11-35-21.png)
+![](2023-04-02-11-36-53.png)
  1.  Handle 句柄： 用来标识socket连接或是打开文件；
  2.  Synchronous Event Demultiplexer：同步事件多路分解器：由操作系统内核实现的一个函数；**用于阻塞等待发生在句柄集合上的一个或多个事件；（如select/epoll；）**
  3.  Event Handler：**事件处理接口**，拥有io文件句柄（可以通过get_handle获取，以及对handle的操作handle_event(读/写)）
@@ -107,7 +108,7 @@ Reactor包含如下角色：
 **因为select系统调用是阻塞的，所以io多路复用并不是真正的异步，只能称为异步阻塞io**
 
 ### 单线程模式异步非阻塞io
-[label](c:/Users/Raytine/Desktop/1.JPG%0D) ![Alt text](c:/Users/Raytine/Desktop/24932558-493d08e7dab8ecfd.jpg)
+![](2023-04-02-11-37-53.png)
 acceptor收到了客户端的tcp的链接。建立成功后，通过dispatch将对应的bytebuf分发到指定的handler上，进行消息解码
     问题：  
     1. 一个nio线程无法处理太多的链接，即便cpu满负荷也不可以
@@ -115,15 +116,14 @@ acceptor收到了客户端的tcp的链接。建立成功后，通过dispatch将�
      3. 一旦nio线程跑飞，整个系统的通信模块都会变得不可用
 
 ### Reactor多线程模型
-![Alt text](c:/Users/Raytine/Desktop/24932558-7b509f3abebe5eed.jpg)
-不同处：
+不同处：![](2023-04-02-11-39-17.png)
 1. acceptor作为一个单独的nio线程监听服务端，接收client的request
 2. 网络io操作读写由一个nio线程池负责，一个队列和多个可用的线程，这些线程负责消息的编解码及发送
 3. 一个nio线程可以同时处理多个链路，但是一个链路只对应一个nio线程
 
 
 ### 主从Reactor多线程模型
-![Alt text](c:/Users/Raytine/Desktop/24932558-8ad707941af96b22.jpg)
+![](2023-04-02-11-41-31.png)
 最大的特点就是接收客户端连接的不是一个单独的nio操作而是变成了一个独立的nio线程池
    1. 这个接收线程池收到请求并处理完以后会创建一个新的socketchannel然后注册到sub线程池的io上
    2. 然后由sub线程池中的对socketchannel中的数据进行编解码操作
@@ -132,3 +132,128 @@ acceptor收到了客户端的tcp的链接。建立成功后，通过dispatch将�
 
 
 Proactor：
+主要区别一句话总结：
+**reactor是内核告诉用户进程文件句柄状态，用户线程去内核去进行读取及处理数据的操作；proactor是内核将数据读取完，并且将内核中的数据复制到用户线程指定的缓存区域，告诉用户线程直接去处理。**
+![](2023-04-02-11-45-29.png)
+   1. **Handle 句柄**；用来标识socket连接或是打开文件；
+   2. **Asynchronous Operation Processor：异步操作处理器**；负责执行异步操作，一般由操作系统内核实现；
+   3. Asynchronous Operation：异步操作
+   4. Proactor：主动器；为应用程序进程提供事件循环；从完成事件队列中取出异步操作的结果，分发调用相应的后续处理逻辑；
+   5. Completion Handler：完成事件接口；一般是由回调函数组成的接口；
+   6. **Concrete Completion Handler**：完成事件处理逻辑；实现接口定义特定的应用处理逻辑；
+1. 大致流程：
+   1. 用户线程将 **完成接口处理的接口** 注册到 **异步操作处理器** 
+   2. 异步操作处理器会开启独立的内核线程执行异步操作
+   3. 操作结束以后处理器会将complehandler和处理完的io数据一起给Proactor
+   4. 由proactor调用不同的完成事件接口的handle_event()
+   5. ![](2023-04-02-11-57-53.png)
+
+过程：用户线程直接调用proactor提供的异步api进行read请求，就是完成上面的注册过程。
+      1. 当read请求的数据到达时，**由内核负责读取socket中的数据**，并写入用户指定的缓冲区中。
+      2. 最后内核将read的数据和用户线程注册的CompletionHandler分发给内部Proactor，Proactor将IO完成的信息通知给用户线程
+
+
+## 零拷贝
+指计算机在执行操作的时候，**cpu不需要先将数据从某处复制到一个特定地方**，节省cpu的时钟周期和内存带宽
+![](2023-04-02-13-46-31.png)
+### DMA
+DIRECT MEMORY ACCESS
+**这个东西不消耗cpu**
+从磁盘到内核read缓冲区，从内核到网卡，两个操作都是DMA
+
+### MMP
+![](2023-04-02-13-48-33.png)
+
+**实现原理**
+使用虚拟内存替代物理内存(使用虚拟内存用户进程同样可以对文件内容可以操作)
+节省了上图内核缓冲到用户空间以及用户空间到socket缓冲的拷贝流程：其中内核缓冲（磁盘读到的read缓冲区）到socket缓冲区（发往网卡的缓冲区）；这两个缓冲区的拷贝没有节省，但是都发生在内核中，效率变快
+
+**fileChannel** 很重要两个零拷贝操作一个mmap对应filechannel的.map(),一个sendfile对应filechannel的.transferTo()
+
+**NIO的FileChannel.map底层就是封装了 linux的 mmap**
+```java
+public static void main(String[] args) {
+        File file = new File("");
+        try {
+            //打开FileChannel只能读取
+            FileChannel fileChannelIn = new FileInputStream(file).getChannel();
+            //打开FileChannel只能写入
+            FileChannel fileChannel1Out = new FileInputStream("").getChannel();
+            //读入数据转为MappedByteBuffer
+            MappedByteBuffer mbb = fileChannelIn.map(FileChannel.MapMode.READ_ONLY,0,file.length());
+            //创建解码器
+            Charset charset = Charset.forName("UTF-8");
+            //写入数据
+            fileChannel1Out.write(mbb);
+            mbb.clear();
+            //创建解码器
+            CharsetDecoder decoder = charset.newDecoder();
+            // 使用解码器将byteBuffer转为CharBuffer
+            CharBuffer charBuffer = decoder.decode(mbb);
+            System.out.println(charBuffer);
+        }catch (Exception e){
+            return;
+        }
+    }
+```
+
+### sendFile
+保存了mmap的不需要来回拷贝的优点，**适用于应用进程不需要对读取数据做任何处理的场景**,类似于一种完全意义上的数据传输
+这个实现的拷贝，**主要做的实现了数据的偏移量offset，数据长度length的拷贝**
+
+![](2023-04-02-14-02-19.png)
+看似不经历socket缓冲区，比mmp更减少了一步，从磁盘读完文件到内核read缓冲区，再DMA直接到了网卡，发送数据
+
+不存在用户缓冲区（不需要使用）
+数据甚至不用从内核缓冲区拷贝到socket的缓冲区，只需要将内核缓冲区的拷贝一些**offset和length到socket缓冲区**
+**nio中使用的是FileChannel.transferTo，底层封装的是linux的sendfile这个方法**
+```java
+public static void main(String[] args) {
+        String files[] = new String[1];
+        files[0] = System.getProperty("usr.dir") + "/c:\\aa\\dn.txt";
+        catFiles(Channels.newChannel(System.out), files);
+    }
+
+    private static void catFiles(WritableByteChannel target, String[] files) {
+        try{
+            for (int i = 0; i < files.length; i++) {
+                FileInputStream fileInputStream = new FileInputStream(files[1]);
+                FileChannel channel = fileInputStream.getChannel();
+                channel.transferTo(0,channel.size(),target);
+                channel.close();
+                fileInputStream.close();
+            }  
+        } catch (Exception e){
+            System.out.println(e);
+        }
+    }
+```
+
+总结：
+1. 传统io有4次上下文切换，4次拷贝 磁盘 -> 内核read -> 用户 -> 内核socket -> 网卡（协议引擎）
+2. mmap：三次拷贝（两次DMA + 一次内核read缓冲到内核socket缓存）。将磁盘文件映射到内存，支持读写内存文件直接反映到磁盘文件上，适合小文件读取
+3. sendfile：两次拷贝（两次DMA），适合大文件传输
+
+#### netty 的零拷贝
+1. Netty的接收和发送ByteBuffer采用的是**Direct buffers**，使用堆外内存直接进行socket读取
+2. CompositeByteBuf对组合的buffer进行操作 ：ByteBuf 合并为一个**逻辑上的 ByteBuf**, 避免了各个 ByteBuf 之间的拷贝
+   ![](2023-04-02-15-43-03.png)
+3. 文件传输采用transferTo,使用DefaultFileRegion类进行了一个封装
+4. 通过 wrap 操作：我们可以将 byte[] 数组、ByteBuf、ByteBuffer等包装成一个 Netty ByteBuf 对象, 进而避免了拷贝操作.
+   1. **byte 数组, 我们希望将它转换为一个 ByteBuf 对象**
+   2. 
+   ```java 
+   byte[] bytes = ...;
+    ByteBuf byteBuf = Unpooled.buffer();
+    byteBuf.writeBytes(bytes); 
+   ```
+   3. 我们可以使用 **Unpooled 的相关方法**, 包装这个 byte 数组, 生成一个新的 ByteBuf 实例, 而不需要进行拷贝操作 
+   
+   ```java
+   byte[] bytes = ...
+    ByteBuf byteBuf = Unpooled.wrappedBuffer(bytes);
+    ```
+5.  slice 操作实现零拷贝
+    1.  slice 操作和 wrap 操作刚好相反;wrappedBuffer 可以将多个 ByteBuf 合并为一个, 而 slice 操作可以将一个 ByteBuf 切片 为多个**共享一个存储区域**的 ByteBuf 对象.
+    2.  用 slice 方法产生 header 和 body 的过程是没有拷贝操作的, header 和 body 对象在内部其实是共享了 byteBuf 存储空间的不同部分而已. 
+    3.  ![](2023-04-02-15-52-19.png)
