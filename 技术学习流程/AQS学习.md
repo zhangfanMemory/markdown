@@ -1,6 +1,6 @@
 # AQS学习
 AQS 的全称为 AbstractQueuedSynchronizer
-![抽象类的具体位置：juc.lock下](2023-04-02-17-05-00.png)
+![抽象类的具体位置：juc.lock下](/技术学习流程/pic/2023-04-02-17-05-00.png)
 
 &nbsp;&nbsp;&nbsp;&nbsp;AQS是是一个抽象类，主要用来构建锁和同步器。后续在锁里会大量用大  
 
@@ -12,10 +12,10 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
 
 &nbsp;&nbsp;&nbsp;&nbsp;AQS原理：如果被请求的资源空闲，则将当前线程设置为有效的工作线程，并将请求的共享资源设置为占用状态，但是若资源处于被占用的状态，那么就需要一套机制来实现等待和唤醒的操作，AQS就是使用CLH队列来实现（虚拟双向队列）：**将每一个请求资源的线程封装成一个队列节点**  
 
-![CLH队列结构图](2023-04-02-17-16-15.png)
+![CLH队列结构图](/技术学习流程/pic/2023-04-02-17-16-15.png)
 **它保存着线程的引用（thread）、 当前节点在队列中的状态（waitStatus）、前驱节点（prev）、后继节点（next）**
 
-![核心原理图](2023-04-02-17-17-21.png)
+![核心原理图](/技术学习流程/pic/2023-04-02-17-17-21.png)
 
 ### 第一个核心点state
 AQS 使用 int 成员变量 **state 表示同步状态**，通过内置的 线程等待队列 来完成获取资源线程的排队工作。

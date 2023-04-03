@@ -80,15 +80,12 @@ epoll ：
     1. epoll_creat（）:告诉内核监听的数目有多大，不是限制只是内核初始分配的建议，但是内核会占用这些描述符，所以使用完了，必须要关闭掉
     2. epoll_ctl（）:  epfd : epoll_creat的返回值 ；op：三个宏来表示：添加，删除，修改 fd：要监听的fd（文件描述符）；epoll_event:告诉内核需要监听什么事
     3. epoll_wait（）：等待epfd上的io事件，最多返回maxevents个事件；
-![函数](c:/Users/Raytine/Desktop/24932558-a9eb8f1d6b9589a1.webp)  
-
-![rector](c:/Users/Raytine/Desktop/24932558-5ac7cd4205d569bd.jpg)
 
 ## 讲一下什么Reactor 和 Proactor
 
 Reactor包含如下角色：
-![](2023-04-02-11-35-21.png)
-![](2023-04-02-11-36-53.png)
+![](/技术学习流程/pic/2023-04-02-11-35-21.png)
+![](/技术学习流程/pic/2023-04-02-11-36-53.png)
  1.  Handle 句柄： 用来标识socket连接或是打开文件；
  2.  Synchronous Event Demultiplexer：同步事件多路分解器：由操作系统内核实现的一个函数；**用于阻塞等待发生在句柄集合上的一个或多个事件；（如select/epoll；）**
  3.  Event Handler：**事件处理接口**，拥有io文件句柄（可以通过get_handle获取，以及对handle的操作handle_event(读/写)）
@@ -98,7 +95,6 @@ Reactor包含如下角色：
      2.  使用handle_events运行事件循环；
      3.  reactor不断调用Synchronous Event Demultiplexer的select函数，有文件句柄被激活，select就会返回，handle_events会调用与文件句柄关联的事件处理器handle_event进行处理
      
-![Alt text](c:/Users/Raytine/Desktop/24932558-493d08e7dab8ecfd.jpg)
 
 ### io多路复用的流程方式：
     1. 通过Reactor的方式，可以将用户线程轮询IO操作状态的工作统一交给handle_events事件循环进行处理
@@ -108,7 +104,7 @@ Reactor包含如下角色：
 **因为select系统调用是阻塞的，所以io多路复用并不是真正的异步，只能称为异步阻塞io**
 
 ### 单线程模式异步非阻塞io
-![](2023-04-02-11-37-53.png)
+![](/技术学习流程/pic/2023-04-02-11-37-53.png)
 acceptor收到了客户端的tcp的链接。建立成功后，通过dispatch将对应的bytebuf分发到指定的handler上，进行消息解码
     问题：  
     1. 一个nio线程无法处理太多的链接，即便cpu满负荷也不可以
@@ -116,14 +112,14 @@ acceptor收到了客户端的tcp的链接。建立成功后，通过dispatch将�
      3. 一旦nio线程跑飞，整个系统的通信模块都会变得不可用
 
 ### Reactor多线程模型
-不同处：![](2023-04-02-11-39-17.png)
+不同处：![](/技术学习流程/pic/2023-04-02-11-39-17.png)
 1. acceptor作为一个单独的nio线程监听服务端，接收client的request
 2. 网络io操作读写由一个nio线程池负责，一个队列和多个可用的线程，这些线程负责消息的编解码及发送
 3. 一个nio线程可以同时处理多个链路，但是一个链路只对应一个nio线程
 
 
 ### 主从Reactor多线程模型
-![](2023-04-02-11-41-31.png)
+![](/技术学习流程/pic/2023-04-02-11-41-31.png)
 最大的特点就是接收客户端连接的不是一个单独的nio操作而是变成了一个独立的nio线程池
    1. 这个接收线程池收到请求并处理完以后会创建一个新的socketchannel然后注册到sub线程池的io上
    2. 然后由sub线程池中的对socketchannel中的数据进行编解码操作
@@ -134,7 +130,7 @@ acceptor收到了客户端的tcp的链接。建立成功后，通过dispatch将�
 Proactor：
 主要区别一句话总结：
 **reactor是内核告诉用户进程文件句柄状态，用户线程去内核去进行读取及处理数据的操作；proactor是内核将数据读取完，并且将内核中的数据复制到用户线程指定的缓存区域，告诉用户线程直接去处理。**
-![](2023-04-02-11-45-29.png)
+![](/技术学习流程/pic/2023-04-02-11-45-29.png)
    1. **Handle 句柄**；用来标识socket连接或是打开文件；
    2. **Asynchronous Operation Processor：异步操作处理器**；负责执行异步操作，一般由操作系统内核实现；
    3. Asynchronous Operation：异步操作
@@ -146,7 +142,7 @@ Proactor：
    2. 异步操作处理器会开启独立的内核线程执行异步操作
    3. 操作结束以后处理器会将complehandler和处理完的io数据一起给Proactor
    4. 由proactor调用不同的完成事件接口的handle_event()
-   5. ![](2023-04-02-11-57-53.png)
+   5. ![](/技术学习流程/pic/2023-04-02-11-57-53.png)
 
 过程：用户线程直接调用proactor提供的异步api进行read请求，就是完成上面的注册过程。
       1. 当read请求的数据到达时，**由内核负责读取socket中的数据**，并写入用户指定的缓冲区中。
@@ -155,14 +151,14 @@ Proactor：
 
 ## 零拷贝
 指计算机在执行操作的时候，**cpu不需要先将数据从某处复制到一个特定地方**，节省cpu的时钟周期和内存带宽
-![](2023-04-02-13-46-31.png)
+![](/技术学习流程/pic/2023-04-02-13-46-31.png)
 ### DMA
 DIRECT MEMORY ACCESS
 **这个东西不消耗cpu**
 从磁盘到内核read缓冲区，从内核到网卡，两个操作都是DMA
 
 ### MMP
-![](2023-04-02-13-48-33.png)
+![](/技术学习流程/pic/2023-04-02-13-48-33.png)
 
 **实现原理**
 使用虚拟内存替代物理内存(使用虚拟内存用户进程同样可以对文件内容可以操作)
@@ -201,7 +197,7 @@ public static void main(String[] args) {
 保存了mmap的不需要来回拷贝的优点，**适用于应用进程不需要对读取数据做任何处理的场景**,类似于一种完全意义上的数据传输
 这个实现的拷贝，**主要做的实现了数据的偏移量offset，数据长度length的拷贝**
 
-![](2023-04-02-14-02-19.png)
+![](/技术学习流程/pic/2023-04-02-14-02-19.png)
 看似不经历socket缓冲区，比mmp更减少了一步，从磁盘读完文件到内核read缓冲区，再DMA直接到了网卡，发送数据
 
 不存在用户缓冲区（不需要使用）
@@ -237,7 +233,7 @@ public static void main(String[] args) {
 #### netty 的零拷贝
 1. Netty的接收和发送ByteBuffer采用的是**Direct buffers**，使用堆外内存直接进行socket读取
 2. CompositeByteBuf对组合的buffer进行操作 ：ByteBuf 合并为一个**逻辑上的 ByteBuf**, 避免了各个 ByteBuf 之间的拷贝
-   ![](2023-04-02-15-43-03.png)
+   ![](/技术学习流程/pic/2023-04-02-15-43-03.png)
 3. 文件传输采用transferTo,使用DefaultFileRegion类进行了一个封装
 4. 通过 wrap 操作：我们可以将 byte[] 数组、ByteBuf、ByteBuffer等包装成一个 Netty ByteBuf 对象, 进而避免了拷贝操作.
    1. **byte 数组, 我们希望将它转换为一个 ByteBuf 对象**
@@ -256,4 +252,4 @@ public static void main(String[] args) {
 5.  slice 操作实现零拷贝
     1.  slice 操作和 wrap 操作刚好相反;wrappedBuffer 可以将多个 ByteBuf 合并为一个, 而 slice 操作可以将一个 ByteBuf 切片 为多个**共享一个存储区域**的 ByteBuf 对象.
     2.  用 slice 方法产生 header 和 body 的过程是没有拷贝操作的, header 和 body 对象在内部其实是共享了 byteBuf 存储空间的不同部分而已. 
-    3.  ![](2023-04-02-15-52-19.png)
+    3.  ![](/技术学习流程/pic/2023-04-02-15-52-19.png)
