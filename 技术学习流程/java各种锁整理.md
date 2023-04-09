@@ -92,3 +92,12 @@ hasqueuedProcessors（）
 
 一个是每次state + 1，释放每次state -1；
 另一个很直接设置为state = 1；释放的时候直接将state 设置为0
+
+synchronized 锁：
+    1. 可重入
+    2.  不可中断 
+    3.  非公平
+Lock: 
+    1. 可重入
+    2. 可判断
+    3. 可公平（两者皆可）
