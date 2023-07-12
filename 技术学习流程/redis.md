@@ -5,7 +5,7 @@
 struct RedisObject {
  int4 type; // 4bits
  int4 encoding; // 4bits
- int24 lru; // 24bits
+ int24 lru; // 24bits； 结合过期策略。lru的缺陷看
  int32 refcount; // 4bytes
  void *ptr; // 8bytes，64-bit system
 }
@@ -318,3 +318,22 @@ struct raxNode {
    5. allkeys-lru 最近最少使用的key，包含没有设置过期时间
    6. allkeys-random 随机淘汰所有的
 4. 惰性删除
+   1. 存在的必要：当del删除的节点过大的时候，会导致主线程阻塞，为了解决卡顿，redis4.0 提供unlink，开启一个异步线程后台进行数据删除
+   2. **机制**：azyfree的原理不难想象，就是在删除对象时只是进行逻辑删除，然后把对象丢给后台，让后台线程去执行真正的destruct，避免由于对象体积过大而造成阻塞
+   3. unlink
+   4. FLUSHALL、FLUSHDB命令 --- 清空数据库 后面加async
+   5. lazyfree线程
+      1. 虽然redis把处理网络收发和执行命令这些操作都放在了主工作线程，但是除此之外还有许多bio后台线程也在兢兢业业的工作着，比如用来处理关闭文件和刷盘这些比较重的IO操作，这次bio家族又加入了新的小伙伴——lazyfree线程。
+
+### LRU的缺陷：
+1. 有一种场景就是一个key偶然的被访问一次，这样这个key就不会删除
+2. 理解文章开头有一个redisObject头中有一个lru字段
+   1. LRU 和 LFU 都是根据lru字段进行比较
+   2. LRU模式下，该字段存储的是reids的server.lruclock，每次key被访问，都会触发该值的更改，根据该值来比对多久时间没访问
+      1. ![](/技术学习流程/pic/2023-07-11-17-07-21.png)
+   3. LFU模式下，lru该字段的24bit是用于存储两个值，分别是ldt 和 logc
+      1. logc（count）用于存储范围频次，如果值过小会被回收掉，所以新建的key值会设置成一个默认的值 = 5（避免刚被创建就被回收）
+      2. ldt：用于存储上一个logc的更新时间
+   4. 区别：
+      1. lru ： 访问的时候更新lru字段
+      2. lfu ：删除数据的时候进行 count值的递减，根据衰减系数进行设置；衰减成0则删除
