@@ -236,11 +236,13 @@ public static void main(String[] args) {
 3. sendfile：两次拷贝（两次DMA），适合大文件传输
 
 #### netty 的零拷贝
+**ByteBuf**和**ByteBuffer**都是用于处理字节数据的缓冲区，但它们来自不同的Java库，并且有一些区别。
 1. Netty的接收和发送ByteBuffer采用的是**Direct buffers**，使用堆外内存直接进行socket读取
-2. CompositeByteBuf对组合的buffer进行操作 ：ByteBuf 合并为一个**逻辑上的 ByteBuf**, 避免了各个 ByteBuf 之间的拷贝
+2. 重要的是Unpooled 的工具类，既可以将多个缓冲区重组又可以将1个缓冲区切分（wapper和slience）
+3. CompositeByteBuf对组合的buffer进行操作 ：ByteBuf 合并为一个**逻辑上的 ByteBuf**, 避免了各个 ByteBuf 之间的拷贝
    ![](/技术学习流程/pic/2023-04-02-15-43-03.png)
-3. 文件传输采用transferTo,使用DefaultFileRegion类进行了一个封装
-4. 通过 wrap 操作：我们可以将 byte[] 数组、ByteBuf、ByteBuffer等包装成一个 Netty ByteBuf 对象, 进而避免了拷贝操作.
+4. 文件传输采用transferTo,使用DefaultFileRegion类进行了一个封装
+5. 通过 wrap 操作：我们可以将 byte[] 数组、ByteBuf、ByteBuffer等包装成一个 Netty ByteBuf 对象, 进而避免了拷贝操作.
    1. **byte 数组, 我们希望将它转换为一个 ByteBuf 对象**
    2. 
    ```java 
@@ -249,12 +251,20 @@ public static void main(String[] args) {
     byteBuf.writeBytes(bytes); 
    ```
    3. 我们可以使用 **Unpooled 的相关方法**, 包装这个 byte 数组, 生成一个新的 ByteBuf 实例, 而不需要进行拷贝操作 
-   
-   ```java
+
+    ```java
    byte[] bytes = ...
     ByteBuf byteBuf = Unpooled.wrappedBuffer(bytes);
     ```
-5.  slice 操作实现零拷贝
+   4. 
+    ```java
+        // 将bytebuffer转换为bytebuf
+        ByteBuf byteBuf = Unpooled.wrappedBuffer(byteBuffer);
+    ```
+*        Unpooled.wrappedBuffer(ByteBuffer)方法创建的ByteBuf实际上是一个ByteBuf的视图，与原始的ByteBuffer共享数据，因此在释放ByteBuf之前不应修改原始的ByteBuffer。  
+
+
+6.  slice 操作实现零拷贝
     1.  slice 操作和 wrap 操作刚好相反;wrappedBuffer 可以将多个 ByteBuf 合并为一个, 而 slice 操作可以将一个 ByteBuf 切片 为多个**共享一个存储区域**的 ByteBuf 对象.
     2.  用 slice 方法产生 header 和 body 的过程是没有拷贝操作的, header 和 body 对象在内部其实是共享了 byteBuf 存储空间的不同部分而已. 
     3.  ![](/技术学习流程/pic/2023-04-02-15-52-19.png)
