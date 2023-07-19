@@ -22,7 +22,7 @@ struct RedisObject {
 ## 数据结构
 
 1. 数据结构
-   1. String
+   1. String（微博中的粉丝数）
       1. redis的字符串是以字节数组形式存在的，是可被修改的字符串；redis对字符串的存储有单独的数据结构
       2. **数据结构**叫：SDS："Simple Dynamic String" 的中文翻译是"简单动态字符串" 于存储和处理可变长度的字符串数据
          1. ；
@@ -58,19 +58,19 @@ struct RedisObject {
          2. mget 合并返回
          3. setex name 5 zhangfan ：5s 过期删除key为name ，value为zhangfan的值
          4. setnx name zhangfan ： name不存在就创建name为zhangfan的值
-   2. list
+   2. list（微博的粉丝列表）
       1. 异步队列实现
       2. rpush books python java golang 从右边放入
       3. rpop / lpop 可以从左右提取
       4. 消息对列实现，可以用blpop，阻塞的方式拉数据
-   3. hash
+   3. hash（微博中的商品信息）
       1.  hset books java "think in java"
       2.  hgetall books # entries()，key 和 value 间隔出现
       3.  hget books java -> "think in java"
-   4. set
+   4. set（微博中的共同喜好和好友）
       1.  sadd books python
       2.  spop books # 弹出一个 -- > python
-   5. zset
+   5. zset（打赏排行榜）
       1.  zadd books 9.0 "think in java"
       2.  zrange books 0 -1 # 按 score 排序列出，参数区间为排名范围
       3. zset 是一个复合结构，一方面它需要一个 hash 结构来存储 value 和 score 的对应关系，另一方面需要提供按照 score 来排序的功能，还需要能够指定 score 的范围来获取 value 列表的功能
@@ -283,6 +283,7 @@ struct raxNode {
 3. Cluster 将所有数据划分为 16384 的 slots；每个节点负责其中一部分槽位
 4. 槽位定位算法
    1. Cluster 默认会对 key 值使用 crc32 算法进行 hash 得到一个整数值，然后用这个整数值对 16384 进行取模来得到具体槽位。
+      1. 16384 个槽点是为了实现数据均匀分布、方便节点的增加和移除、支持数据的并行处理和故障转移等目标而选择的
    2. redis的键值对是如何部署到各个槽中的
       1. 将键进行CRC16hash算法计算成一个hash值，然后对该hash惊醒16384的取余，该键就找到了对应的slot
    3. 通常情况下，集群上的各个redis节点也具备主备节点
@@ -310,13 +311,15 @@ struct raxNode {
    4. 从库没有过期策略，主库在key过期回新增del语句在aof文件上，从库跟着删除，会出现数据不一致场景
 2. LRU机制
    1. 实际内存超出最大内存、
-3. (maxmemory-policy) 最大内存淘汰机制
+3. (maxmemory-policy) 最大内存淘汰机制（**key的清楚策略**）
    1. noeviction 不会继续服务写请求 (DEL 请求可以继续服务)，读请求可以继续进行
    2. volatile-lru 尝试淘汰设置了过期时间的 key，最少使用的 key 优先被淘汰
    3. volatile-ttl 剩余寿命最小的（剩余时间最小的）
    4. volatile-random 不过淘汰的 key 是过期 key 集合中随机的 key（设置随机时间的随机淘汰）
    5. allkeys-lru 最近最少使用的key，包含没有设置过期时间
    6. allkeys-random 随机淘汰所有的
+   7. 设置了lfu：最不频繁使用的key删除
+   8. 设置了lfu并且设置了expire的最不频繁使用的key值进行删除
 4. 惰性删除
    1. 存在的必要：当del删除的节点过大的时候，会导致主线程阻塞，为了解决卡顿，redis4.0 提供unlink，开启一个异步线程后台进行数据删除
    2. **机制**：azyfree的原理不难想象，就是在删除对象时只是进行逻辑删除，然后把对象丢给后台，让后台线程去执行真正的destruct，避免由于对象体积过大而造成阻塞
@@ -332,8 +335,24 @@ struct raxNode {
    2. LRU模式下，该字段存储的是reids的server.lruclock，每次key被访问，都会触发该值的更改，根据该值来比对多久时间没访问
       1. ![](/技术学习流程/pic/2023-07-11-17-07-21.png)
    3. LFU模式下，lru该字段的24bit是用于存储两个值，分别是ldt 和 logc
-      1. logc（count）用于存储范围频次，如果值过小会被回收掉，所以新建的key值会设置成一个默认的值 = 5（避免刚被创建就被回收）
+      1. logc（count）用于存储范围频次（计数器），如果值过小会被回收掉，所以新建的key值会设置成一个默认的值 = 5（避免刚被创建就被回收）
       2. ldt：用于存储上一个logc的更新时间
    4. 区别：
       1. lru ： 访问的时候更新lru字段
       2. lfu ：删除数据的时候进行 count值的递减，根据衰减系数进行设置；衰减成0则删除
+
+### 如何保证缓存和持久化数据（DB）的数据一致性
+1. 若发生数据更新的时候如何处理
+   1. 延迟双删除
+      1. 先删除缓存，再删除数据库。再删除缓存
+   2. 如果不第二次删除缓存会导致，并发状态下，其他的线程在第一个线程删除缓存数据的时候去读数据库的旧值，单在第一个线程写缓存的时候先将旧的数据写到缓存，导致缓存及db数据不一致
+   3. 先删db再删除redis：出现删除失败缓存的场景就会数据不一致；给reids加expire是一种处理，但在expire时间范围内数据会不一致
+
+### 一个单机redis缓存需要注意哪些东西
+1. 对象存储上限
+2. 删除策略
+3. 过期时间
+4. 线程安全
+5. 阻塞机制：如果有其他线程读取数据库了，该线程应该阻塞，而不是频繁读取数据库
+6. 实用的接口，简单明了易懂
+7. 是否需要持久化

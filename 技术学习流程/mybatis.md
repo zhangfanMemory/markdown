@@ -1,4 +1,6 @@
 # mybatis学习
+
+## 缓存
 ![](/技术学习流程/pic/2023-07-02-18-47-53.png)
 1. 第一次发出一个查询 sql，sql 查询结果写入 sqlsession 的一级缓存中，缓存使用的数据结构是一个 map。key：MapperID+offset+limit+Sql+所有的入参
 2. 如果两次中间出现 commit 操作
@@ -19,3 +21,29 @@
 6. 将查询结果存储到一级缓存和二级缓存中，以便下次使用。
 7. 
 **需要注意的是，对于更新、插入、删除等会修改数据库的操作，MyBatis会清空一级缓存和相关的二级缓存，以保证数据的一致性。**
+
+## sqlsession 和 statement的区别
+1. SqlSession 是 MyBatis 框架中用于与**数据库交互的主要接口**。它是一个会话对象，用于管理数据库**连接并执行 SQL 语句**
+2. Statement 是 Java JDBC API 中的一个接口，它表示了一个预编译的 SQL 语句。**在 JDBC 中，Statement 用于执行 SQL **语句并返回结果。
+3. SqlSession 是 MyBatis 用于管理数据库连接和执行 SQL 操作的会话对象，它封装了底层的 Statement 实现
+4. 对应关系是一对一的关系
+
+## mybtais 执行sql 的具体流程
+1. 读取mybatis-congig.xml（mybatis的配置文件） 和 mapper.xml（映射文件，定义了java与sql语句对应关系）
+2. 生成sqsessionFactory（主要用于生成sqlsession）
+3. 执行sqsessionFactory.openSession(),开启一个sqlsession
+4. 解析映射文件，在创建sqlsession时候会将java和sql语句映射关系存在内存中
+5. 获取mapper的接口代理对象，通过**sqlsession.getmapper获取代理对象**
+6. **通过 Mapper接口的代理对象调用相应的方法，即可执行 SQL语句，MyBatis 会根据方法名称和参数类型来找到对应的映射SQL，并执行它； 在执行 SQL 时，MyBatis 会创建相应的 Statement 对象（可以是 Statement、PreparedStatement 或 CallableStatement），并将参数设置到 Statement 中。**
+7. 执行完 SQL 后，MyBatis 会根据映射文件中的配置将查询结果映射到 Java 对象中。这样，就可以将查询结果赋值给 Java 对象，形成最终的结果对象。
+8. 返回结果
+9. 删除sqlsession
+
+## mybatis中如何通过sqlsession.getmapper得到代理对象
+mybatis的mapper代理对象如何生成的
+1. MyBatis会为每个Mapper接口中的方法创建一个对应的MapperMethod对象。MapperMethod中包含了SQL语句的执行逻辑和结果映射等信息。
+2. 生成的代理对象实际上是MapperProxy的实例。MapperProxy是MyBatis中用于代理Mapper接口的核心类，它实现了Java的InvocationHandler接口
+3. 当代理对象的方法被调用时，实际上是调用了MapperProxy的invoke()方法。
+4. 会根据调用的方法名称和参数类型，在Configuration对象中查找对应的MapperMethod对象。然后，invoke()方法会执行MapperMethod中定义的SQL语句，并将执行结果返回给调用者。
+
+
