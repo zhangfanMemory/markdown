@@ -1,5 +1,6 @@
 ## ZK
-**Zookeeper 是一个分布式协调服务，可用于服务发现，分布式锁，分布式领导选举，配置管理等。**
+**Zookeeper 是一个分布式协调服务，可用于服务发现，分布式锁，分布式领导选举，配置管理，注册中心，分布式通知（利用watch机制）等。**
+
 
 leader: 支持写操作，然后同步给给各个节点（不包含obser），超过半数成功则写入成功
 follower: 支持读操作，可以投票
@@ -60,3 +61,23 @@ epoch值，然后加 1，以此作为新的epoch
    2. 分布式锁：多个客户端可以创建同一个临时节点来竞争获取锁，只有一个客户端能够成功创建临时节点，从而获得锁的控制权
 4. EPHEMERAL_SEQUENTIAL：暂时化顺序编号目录节点。
    1. 临时顺序节点常用于实现分布式队列的功能，每个客户端可以创建一个临时顺序节点，按照节点的顺序来加入队列。其他客户端可以按照相同的顺序来从队列中获取任务或消息进行处理
+
+## watch机制:发布订阅
+1. 当你在ZooKeeper上注册一个Watcher，它会在节点状态发生变化时得到通知，然后你可以在Watcher中处理相应的逻辑
+2. ZooKeeper的Watcher是一次性的，一旦被触发，就需要重新注册。因此，当你在处理完Watcher的事件后，如果希望继续监视节点的变化，需要再次注册Watcher。
+3. java需要使用Curator
+4. 
+``` java
+CuratorFramework client = CuratorFrameworkFactory.newClient(ZK_CONNECTION_STRING,
+                new ExponentialBackoffRetry(1000, 3));
+client.start();
+NodeCache nodeCache = new NodeCache(client, ZK_NODE_PATH);
+  // 注册Watcher监听器
+        nodeCache.getListenable().addListener(new NodeCacheListener() {
+            @Override
+            public void nodeChanged() throws Exception {
+                byte[] data = nodeCache.getCurrentData().getData();
+                System.out.println("Node changed: " + new String(data));
+            }
+        });
+``` 
