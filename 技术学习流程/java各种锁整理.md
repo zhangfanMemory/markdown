@@ -120,3 +120,151 @@ Lock:
 等待的线程会一直等待下去，不能够响应中断。
 10. 通过 Lock 可以知道有没有成功获取锁，而 synchronized 却无法办到。
 11. Lock 可以提高多个线程进行读操作的效率，既就是实现读写锁等。
+
+
+
+# 线程间的通讯方式
+1. volatile
+   1. 关键字volatile可以用来修饰字段（成员变量），就是告知程序任何对该变量的访问均需要从共享内存中获取，而对它的改变必须同步刷新回共享内存，它能保证所有线程对变量访问的可见性
+2. synchronized(wait notify)
+   1. 根据synchronized原理使用Object类提供了线程间通信的方法：wait()、notify()、notifyaAl()方法来实现多个线程互斥访问临界区资源，Object类这几个方法必须配合synchronized来进行使用。
+   ```java
+   public class TestSync 
+    public static void main(String[] args) {
+        // 定义一个锁对象
+        Object lock = new Object();
+        List<String>  list = new ArrayList<>();
+        // 实现线程A
+        Thread threadA = new Thread(() -> {
+            synchronized (lock) {
+                for (int i = 1; i <= 10; i++) {
+                    list.add("abc");
+                    System.out.println("线程A向list中添加一个元素，此时list中的元素个数为：" + list.size());
+                    try {
+                        Thread.sleep(500);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    if (list.size() == 5)
+                        lock.notify();// 唤醒B线程
+                }
+            }
+        });
+        // 实现线程B
+        Thread threadB = new Thread(() -> {
+            while (true) {
+                synchronized (lock) {
+                    if (list.size() != 5) {
+                        try {
+                            lock.wait();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    System.out.println("线程B收到通知，开始执行自己的业务...");
+                }
+            }
+        });
+        //　需要先启动线程B
+        threadB.start();
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        // 再启动线程A
+        threadA.start();
+    }
+    ```
+   **存在的问题**：notify和wait一定要配合synchorized使用
+   wait是要释放对象锁，进入等待池；既然是释放对象锁，那么肯定是先要获得锁。所以wait必须要写在synchronized代码块中，否则会报异常。
+   **notify()或者notifyAll()调用时并不会真正释放对象锁, 必须等到synchronized方法或者语法块执行完才真正释放锁.**
+   notify在源码中的注视是随机唤醒线程，但是具体是依赖与实现，在hotspot的JVM中；但是在hotspot对notofy()的实现并不是我们以为的随机唤醒, 而是“先进先出”的顺序唤醒!
+   wait：释放锁并且释放cpu
+   sleep: 不会释放锁，但是会释放cpu
+3. countdownLunch
+   1. countdown() + await()
+   ```java
+   public class TestSync 
+    public static void main(String[] args) {
+        CountDownLatch countDownLatch = new CountDownLatch(1);
+        List<String>  list = new ArrayList<>();
+        // 实现线程A
+        Thread threadA = new Thread(() -> {
+            for (int i = 1; i <= 10; i++) {
+                list.add("abc");
+                System.out.println("线程A向list中添加一个元素，此时list中的元素个数为：" + list.size());
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                if (list.size() == 5)
+                    countDownLatch.countDown();
+            }
+        });
+        // 实现线程B
+        Thread threadB = new Thread(() -> {
+            while (true) {
+                if (list.size() != 5) {
+                    try {
+                        countDownLatch.await();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+                System.out.println("线程B收到通知，开始执行自己的业务...");
+                break;
+            }
+        });
+        //　需要先启动线程B
+        threadB.start();
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        // 再启动线程A
+        threadA.start();
+    }
+    ```
+
+4. LockSupport
+   1. 基于park()和unpark()进行线程的阻塞
+   2. 与synchronize的wait和notify的区别
+      1. 简单：不需要获取锁，能直接阻塞线程。
+      2. 直观：以thread为操作对象更符合阻塞线程的直观定义；
+      3. 可以准确地唤醒某一个线程（notify随机唤醒一个线程，notifyAll唤醒所有等待的线程）；
+      4. unpark方法可以在park方法前调用。（而wait通常在notify之后进行）
+   ```java
+   public class TestSync 
+    public static void main(String[] args) {
+        List<String> list = new ArrayList<>();
+        // 实现线程B
+        final Thread threadB = new Thread(() -> {
+            if (list.size() != 5) {
+                LockSupport.park();
+            }
+            System.out.println("线程B收到通知，开始执行自己的业务...");
+        });
+        // 实现线程A
+        Thread threadA = new Thread(() -> {
+            for (int i = 1; i <= 10; i++) {
+                list.add("abc");
+                System.out.println("线程A向list中添加一个元素，此时list中的元素个数为：" + list.size());
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                if (list.size() == 5)
+                    LockSupport.unpark(threadB);
+            }
+        });
+        threadA.start();
+        threadB.start();
+    }
+    ```
+    A输出5个，然后B，然后继续输出A的后5个
+5. 信号量（Semaphore）：代码看AQS，还能用做限流服务
+6. 管道通信（与队列类似）

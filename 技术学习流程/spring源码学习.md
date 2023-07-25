@@ -48,7 +48,7 @@ Spring 使用父子容器实现了很多功能，比如在 Spring MVC 中，展�
             return userService.add(username, password);
         }
     }
-    ```
+```
 问题：
 1. 无法注入一个不可变的final对象
 2. 只能适用于ioc容器，移植性不好
