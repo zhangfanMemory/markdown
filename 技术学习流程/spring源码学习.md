@@ -22,6 +22,46 @@ Spring 使用父子容器实现了很多功能，比如在 Spring MVC 中，展�
 
 ## 类初始化流程
 ![](/技术学习流程/pic/2023-07-02-17-21-54.png)
+这个图不完善或者说有些问题
+## 最近学习理解流程
+1. new classpathxmlapplication
+2. refersh
+   1. ![](/技术学习流程/pic/2023-07-29-17-49-26.png)
+3. obtainfreshbeanfactory
+   1. ![](/技术学习流程/pic/2023-07-29-18-00-36.png)
+   2. 通过这里面的loadbeandefination 将 <BEAN>的相关内容注入到容器中，此时没有进行初始化和实例化
+   3. 主要通过recourceLoader读取配置文件、
+   4. 将配置文件解析成beandefination
+   5. 通过registerbean，将bean以bdf形式注入到map<name， beandefination>的map容器中
+4. 像容器中注册beanpostprocess接口，用于初始化时候进行回调
+   1. ![](/技术学习流程/pic/2023-07-29-18-06-08.png)
+5. 初始化当前 ApplicationContext 的事件广播器，这里也不展开了 ---- initApplicationEventMulticaster
+6. 开始初始化bean(初始化所有的 singleton beans,除了lazy-init标志的)
+   1. ![](/技术学习流程/pic/2023-07-29-18-11-22.png)
+   2. getbean - dogetbean - creatbean - docreatebean
+   3. ![](/技术学习流程/pic/2023-07-29-18-20-33.png)实例化 - 属性注入 - 初始化
+   4. initializeBean 这里面回调beanpostprocess 里的before和after的接口，在before和after中间去实现init-method 和  afterPropertiesSet （属于initiliazingBean）
+   5. 在 beanpostprocess 的postProcessAfterInitialization里会去实现对bean的代理对象生成
+      1. 这里涉及代理对象的生成，但是在aop中，出现循环依赖，代理对象需要提前暴露不能在最后暴露所以，在finshbeanfactoryinitialization里面中的createInstance之后设置属性之前调用
+      2. ![](/技术学习流程/pic/2023-07-29-18-27-32.png)
+      3. getEarlyBeanReference 提前暴露工厂方法到三级缓存中用户后续循环依赖的处理
+
+### Autowired
+![](/技术学习流程/pic/2023-07-29-18-40-25.png)
+1. docreatebean中
+2. 实例化完成，在applyMergedBeanDefinitionPostProcessors 去获取添加了Autowired属性的bean相关信息(元信息)
+3. 在populateBean中对属性进行填充，通过反射的方式；执行**AutowiredAnnotationBeanPostProcessor**#postProcessProperties方法，进行相应注入
+4. ![@Autowired的注入流程首先是需要构建一个InjectionMetadata，并通过InjectionMetadata的inject方法来进行注入](/技术学习流程/pic/2023-07-29-18-50-11.png)
+5. 最终都会通过通过DefaultListableBeanFactory#resolveDependency获取依赖对象，然后通过反射进行相应属性赋值或者方法调用
+6. 问题：Autowired注解默认根据Type查找依赖的bean，如果找到多个如何处理？
+   1. 通过qualifier 指定名字， 或者 Primary（指定一个主要的），order好像也可以实现先用谁
+
+### Resource
+@Resource相当于@Autowired+@Qualifier，它可以直接指定bean的名称，而@Autowired不能直接指定，需要和@Qualifier配合使用
+1. @Resource进行依赖查找的时候，首先是通过名称查找，如果匹配不到则退化到使用类型匹配；
+2. @Autowired则是先通过类型查找，如果匹配到多个再通过名称查找
+3. @Resource是通过**CommonAnnotationBeanPostProcessor**实现
+   
 
 ### 三级缓存
 1. singletonobject： 缓存最终的单例池结果
