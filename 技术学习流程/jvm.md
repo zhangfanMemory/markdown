@@ -6,7 +6,11 @@
    2. gc回收的区域
       1. 年轻代老年代：1:4（1:3）；年轻代eden：surviorfrom：surviorto = 8：1:1
    3. 何时要minior GC 何时要 Major/FullGC呢？
-      1. 只要老年代的连续空间  > 新生代对象的总大小 或者 历次晋升的平均大小 则进行miniorGC 否则 就执行 Major 或者 FullGC
+      1. （允许担保的政策）只要老年代的连续空间  > 新生代对象的总大小 或者 历次晋升老年代的平均大小小于老年代的连续空间 则进行miniorGC 否则 就执行 Major 或者 FullGC
+      2. fullgc：
+         1. 代码中执行system.gc
+         2. 老年代空间不足
+         3. 空间担保失败（空间担保：历次晋升老年代的大小小于老年代连续空间）
    4. 如何区分major，minorCG和fullGc
       1. Minor GC（小型垃圾回收）：
          1. 通常发生在年轻代（Young Generation）的内存区域。目标是回收年轻代中的垃圾对象。
