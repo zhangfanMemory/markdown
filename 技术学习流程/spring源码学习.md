@@ -44,7 +44,8 @@ Spring 使用父子容器实现了很多功能，比如在 Spring MVC 中，展�
    5. 在 beanpostprocess 的postProcessAfterInitialization里会去实现对bean的代理对象生成
       1. 这里涉及代理对象的生成，但是在aop中，出现循环依赖，代理对象需要提前暴露不能在最后暴露所以，在finshbeanfactoryinitialization里面中的createInstance之后设置属性之前调用
       2. ![](/技术学习流程/pic/2023-07-29-18-27-32.png)
-      3. getEarlyBeanReference 提前暴露工厂方法到三级缓存中用户后续循环依赖的处理
+      3. getEarlyBeanReference 提前暴露工厂方法到三级缓存中用户后续循环依赖的处理（还有种说法是在过MergedBeanDefinitionPostProcessor.postProcessMergedBeanDefinition 里面提前暴露）
+      4. 不过一定是在实例化结束，设置属性之前调用
 
 ### Autowired
 ![](/技术学习流程/pic/2023-07-29-18-40-25.png)
@@ -61,7 +62,21 @@ Spring 使用父子容器实现了很多功能，比如在 Spring MVC 中，展�
 1. @Resource进行依赖查找的时候，首先是通过名称查找，如果匹配不到则退化到使用类型匹配；
 2. @Autowired则是先通过类型查找，如果匹配到多个再通过名称查找
 3. @Resource是通过**CommonAnnotationBeanPostProcessor**实现
-   
+
+### aop
+.JavaConfig方式如何启用AOP?如何强制使用cglib?
+1. @EnableAspectJAutoProxy
+2. //(proxyTargetClass = true) //强制CGLIB
+3. //(exposeProxy = true) 在线程中暴露代理对象@EnableAspectJAutoProxy
+4. ![](/技术学习流程/pic/2023-07-30-17-11-16.png)
+
+啥时候未生效spring事务失效：
+1. 不是public
+2. 没有被sping管理
+3. 切点配置异常
+4. 内部调用没有走代理
+   1. 必须走代理，在本类中自动注入当前的bean
+
 
 ### 三级缓存
 1. singletonobject： 缓存最终的单例池结果
@@ -149,3 +164,46 @@ public class UserController {
 #### 注入不可变对象
 依赖注入用构造器方式注入final修饰的对象
    1. 线程安全需求：在多线程场景下，为防止被注入的对象发生意外修改
+
+## springMvc 与 spring的父子容器
+子父容器：子可以访问父，父不可以访问子
+1. 所以父子容器的主要作用应该是划分框架边界。有点单一职责的味道。service、dao层我们一般使用spring框架来管理、controller层交给springmvc管理
+2. 如果现在我们想把web层从spring mvc替换成struts，那么只需要将spring­mvc.xml替换成Struts的配置文件struts.xml即可，而spring­core.xml不需要改变
+3.  为了节省重复bean创建
+
+### 是否可以将所有的bean在父容器创建？在子容器创建呢
+1. 不可以在父容器创建
+2. mvc中在初始化HandlerMethods并没有去查找父容器的bean
+3. ![](/技术学习流程/pic/2023-07-30-18-17-47.png)
+4. 都在子容器可以 因为父容器的体现无非是为了获取子容器不包含的bean,  如果全部包含在子容器完全用不到父容器了
+
+### spring的拦截器和过滤器有什么区别
+1. 拦截器incepter不依赖与servlet容器，过滤器filter依赖与servlet容器
+2. ![](/技术学习流程/pic/2023-07-30-18-21-45.png)
+
+## springboot
+### 自动装配
+1. 通过@SpringBootConfiguration 引入了@EnableAutoConfiguration (负责启动自动配置功能）
+2. @EnableAutoConfiguration 引入了@Import
+3. Spring容器启动时：加载Ioc容器时会解析@Import 注解
+4. @Import导入了一个autoconfigurationImportSelector
+5. 然后读取所有的/META-INF/spring.factories文件（SPI)
+6. 过滤出所有AutoConfigurtionClass类型的类
+7. 最后通过@ConditioOnXXX排除无效的自动配置类
+
+### 什么是自动装配
+SpringBoot 在启动时会扫描外部引用 jar 包中的META-INF/spring.factories文件，将**文件中配置的类型信息**加载到 Spring 容器，执行类中定义的各种操作
+1. @SpringBootApplication 项目启动使用注解，内部包含以下注解
+   1. @SpringBootConfiguration 即为@Configuration
+      1. 允许在上下文中注册额外的 bean 或导入其他配置类，作用与 applicationContext.xml 的功能相同。spring中与@bean共同作用
+   2. @EnableAutoConfiguration
+      1. 重点自动装配
+      2. 内部调用AutoConfigurationImportSelector
+         1. AutoConfigurationImportSelector 类实现了 ImportSelector接口，也就实现了这个接口中的 **selectImports方法**，该方法主要用于获取所有符合条件的类的全限定类名，这些类需要被加载到 IoC 容器中
+         2. selectimport实现了getAutoConfigurationEntry()方法
+         3. 通过loadSpringFactories 方法将所有 META-INF/spring.factories都会被读取到。
+         4. 最后会根据@ConditionalOnXXX 过滤，符合条件的类才会生效
+         5. ![](/技术学习流程/pic/2023-07-30-18-55-57.png)
+         6. ![](/技术学习流程/pic/2023-07-30-18-57-55.png)
+   3. @ComponentScan
+      1. 扫描包下的类中添加了@Component注解的类
