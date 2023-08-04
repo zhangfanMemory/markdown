@@ -119,3 +119,13 @@ g1跟cms前几种流程类似：初始标记，并发标记最终标记，筛选
 4.  方法区中的常量引用的对象。 
 
 ## 强软弱虚引用
+
+## 一些简单的jvm参数
+-Xms20m ：设置jvm初始化堆大小为20m，一般与-Xmx相同避免垃圾回收完成后jvm重新分。
+-Xmx20m：设置jvm最大可用内存大小为20m。
+-Xmn10m：设置新生代大小为20m。
+-Xss128k：设置每个线程的栈大小为128k。
+
+■ -XX:-UseConcMarkSweepGC：使用CMS收集器；
+1.8: Parallel Scavenge+Parallel Old。
+1.9: g1
