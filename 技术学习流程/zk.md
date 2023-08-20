@@ -22,7 +22,7 @@ epoch值，然后加 1，以此作为新的epoch
 1. 选举阶段：
    1. 节点在一开始都处于选举阶段，只要有一个节点得到超半数节点的票数，它就可以当选准 leader。只有到达 广播阶段（broadcast） 准 leader 才会成为真正的 leader。这一阶段的目的是就是为了选出一个准 leader，然后进入下一个阶段
 2. 发现阶段：
-   1. ，followers 跟准 leader 进行通信，同步 followers 最近接收的事务提议。这个一阶段的主要目的是**发现**当前大多数节点接收的**最新提议**，并且准 leader 生成新的 epoch，让 followers 接受，**更新它们的 accepted Epoch**
+   1. ，followers 跟准 leader 进行通信，leader会同步 followers 最近接收的事务提议。这个一阶段的主要目的是**发现**当前大多数节点接收的**最新提议**，并且准 leader 生成新的 epoch，让 followers 接受，**更新它们的 accepted Epoch**
    2. 一个 follower 只会连接一个 leader，如果有一个节点 f 认为另一个 follower p 是 leader，f 在尝试连接 p 时会被拒绝，f 被拒绝之后，就会进入重新选举阶段
 3. 同步阶段：
    1. 同步阶段主要是利用 leader 前一阶段获得的最新提议历史，同步集群中所有的副本。只有当 大多数节点都同步完成，准 leader 才会成为真正的 leader。follower 只会接收 zxid 比自己的 lastZxid 大的提议
