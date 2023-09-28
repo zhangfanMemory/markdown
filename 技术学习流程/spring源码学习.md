@@ -56,12 +56,18 @@ Spring 使用父子容器实现了很多功能，比如在 Spring MVC 中，展�
 5. 最终都会通过通过DefaultListableBeanFactory#resolveDependency获取依赖对象，然后通过反射进行相应属性赋值或者方法调用
 6. 问题：Autowired注解默认根据Type查找依赖的bean，如果找到多个如何处理？
    1. 通过qualifier 指定名字， 或者 Primary（指定一个主要的），order好像也可以实现先用谁
+7. 总结：
+   1. 在执行registerBeanPostProcessors(beanFactory)时完成了AutowiredAnnotationBeanPostProcessor的创建与注册（refresh的步骤）
+   2. 在用户bean创建过程中(doCreateBean)，实例化(**createBeanInstance**)之后，通过执行**applyMergedBeanDefinitionPostProcessors**方法，实现@Autowired注解元数据的**预解析**
+   3. 在进行属性填充(populateBean)的过程中，通过调用InstantiationAwareBeanPostProcessor的**postProcessProperties**方法，在里面执行 inject 完成真正的注入
 
 ### Resource
 @Resource相当于@Autowired+@Qualifier，它可以直接指定bean的名称，而@Autowired不能直接指定，需要和@Qualifier配合使用
 1. @Resource进行依赖查找的时候，首先是通过名称查找，如果匹配不到则退化到使用类型匹配；
 2. @Autowired则是先通过类型查找，如果匹配到多个再通过名称查找
 3. @Resource是通过**CommonAnnotationBeanPostProcessor**实现
+
+![](/技术学习流程/pic/2023-09-28-15-23-04.png)
 
 ### aop
 .JavaConfig方式如何启用AOP?如何强制使用cglib?
