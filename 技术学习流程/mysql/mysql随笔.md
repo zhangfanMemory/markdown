@@ -54,7 +54,7 @@ int 是 4个字节：32位
 
 #### 查询回表怎么回事
 
-#### MVCC流程
+####  流程
 1. mvcc作用于读已提交，可重复读 （undolog /版本链 /readview）
    1. 所有的undolog通过回滚指针相连，共同组成版本链
       1. 此处不完全正确
@@ -244,3 +244,21 @@ innodb支持的三种锁
       2. 防止在间隙外的数据通过update的操作移动到间隙内
 
 ### 数据库死锁？？
+
+
+### mysql的流式查询
+https://blog.csdn.net/liuxiao723846/article/details/130726967
+
+1. 普通：OOM
+2. 流：需要设置statement.setFetchSize(Integer.MIN_VALUE);
+   1. 过流式查询获取一个ResultSet后，通过next迭代出所有元素之前或者调用close关闭它之前，不能使用同一个数据库连接去发起另外一个查询，否者抛出异常
+   2. 分批的从TCP通道中读取mysql服务返回的数据，每次读取的数据量并不是一行（通常是一个package大小）
+3. 游标查询：
+   1. 在连接参数中需要拼接useCursorFetch=true；
+   2. Connection connection = DriverManager.getConnection("jdbc:mysql://localhost:3307/test?useSSL=false&useCursorFetch=true", "root", "123456");
+   3. ((JDBC4Connection) connection).setUseCursorFetch(true); //com.mysql.jdbc.JDBC4Connection
+   4. 设置fetchSize控制每一次获取多少条数据
+   6. 由于MySQL方不知道客户端什么时候将数据消费完，而自身的对应表可能会有DML写入操作，此时MySQL需要建立一个临时空间来存放需要拿走的数据。因此对于当你启用useCursorFetch读取大表的时候会看到MySQL上的几个现象：
+      1. 磁盘空间飙升
+      2. 在数据准备完成后，开始传输数据的阶段，网络响应开始飙升，IOPS由“读写”转变为“读取”。
+      3. 客户端JDBC发起SQL后，长时间等待SQL响应数据，这段时间就是服务端在准备数
