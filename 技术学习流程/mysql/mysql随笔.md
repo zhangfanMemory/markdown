@@ -246,19 +246,21 @@ innodb支持的三种锁
 ### 数据库死锁？？
 
 
+
 ### mysql的流式查询
 https://blog.csdn.net/liuxiao723846/article/details/130726967
 
 1. 普通：OOM
 2. 流：需要设置statement.setFetchSize(Integer.MIN_VALUE);
-   1. 过流式查询获取一个ResultSet后，通过next迭代出所有元素之前或者调用close关闭它之前，不能使用同一个数据库连接去发起另外一个查询，否者抛出异常
-   2. 分批的从TCP通道中读取mysql服务返回的数据，每次读取的数据量并不是一行（通常是一个package大小）
+   1.      Statement statement = connection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);    
+   2. 过流式查询获取一个ResultSet后，通过next迭代出所有元素之前或者调用close关闭它之前，不能使用同一个数据库连接去发起另外一个查询，否者抛出异常
+   3. 分批的从TCP通道中读取mysql服务返回的数据，每次读取的数据量并不是一行（通常是一个package大小）
 3. 游标查询：
    1. 在连接参数中需要拼接useCursorFetch=true；
    2. Connection connection = DriverManager.getConnection("jdbc:mysql://localhost:3307/test?useSSL=false&useCursorFetch=true", "root", "123456");
    3. ((JDBC4Connection) connection).setUseCursorFetch(true); //com.mysql.jdbc.JDBC4Connection
    4. 设置fetchSize控制每一次获取多少条数据
-   6. 由于MySQL方不知道客户端什么时候将数据消费完，而自身的对应表可能会有DML写入操作，此时MySQL需要建立一个临时空间来存放需要拿走的数据。因此对于当你启用useCursorFetch读取大表的时候会看到MySQL上的几个现象：
+   5. 由于MySQL方不知道客户端什么时候将数据消费完，而自身的对应表可能会有DML写入操作，此时MySQL需要建立一个临时空间来存放需要拿走的数据。因此对于当你启用useCursorFetch读取大表的时候会看到MySQL上的几个现象：
       1. 磁盘空间飙升
       2. 在数据准备完成后，开始传输数据的阶段，网络响应开始飙升，IOPS由“读写”转变为“读取”。
       3. 客户端JDBC发起SQL后，长时间等待SQL响应数据，这段时间就是服务端在准备数
