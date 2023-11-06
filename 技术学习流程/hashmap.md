@@ -11,7 +11,7 @@
 -N: 表示正有N-1个线程执行扩容操作（高 16 位是 length 生成的标识符，低 16 位是扩容的线程数）
 大于 0: 如果table已经初始化,代表table容量,默认为table大小的0.75,如果还未初始化,代表需要初始化的大小
 
-#### put
+### put
 1. 如果为空数组则初始化数组**initTable()**
 2. 找到第一个节点如果为空（数组当前位置是空）直接放入，否则通过CAS放入**casTabAt()**方法
 3. 头节点f.hash == MOVED；头节点的hash 是 -1 并不是sizectl是-1，sizectl在扩容的时候可能-N，表示有n个正在协助扩容；（MOVED就是-1常量）表明是在迁移，扩容操作，关键方法**helpTransfer()**
@@ -73,6 +73,25 @@
     ^异或操作，相同为0，不同为1 先将高16位与低16位进行操作，尽量让低16位打散
     HASH_BITS 为2的31次方-1，0111111111...... 取&操作，为了使最高位为0，不为负数，若为1则为负数
 
+### addcount()
+1. 在无并发的情况下，使用单一的属性 baseCount 进行累计（CAS），一旦操作不成功，进入并发场景。
+2. ![](/技术学习流程/pic/2023-11-03-15-32-27.png)
+3. addCount(long x, int check) 
+   1. 两个参数一个要增加的值
+   2. 一个是是否需要扩容的校验：list传入的是连表长度/ tree传入的是固定值2，/remove传入的是-1
+流程：
+   1. CounterCells 是否为空 > CAS(baseCount) > CAS(CounterCells[n]) > **fulllAddCount()**
+   2. addCount 有一种思想，即当一个集合发生过并发时，其后续发生的并发可能性也越高，所以会先判断 CounterCells 是否为空，如果不为空，则后续不再考虑在baseCount上操作
+   3. 并发添加完数据后会检查check参数，判断是否扩容，主要是 >? sizeCtrl
+
+#### fulllAddCount
+1. 负责的功能 ： 初始化， 更新， 拓展， 并发控制
+2. 首先 CAS(baseCount) 失败以后进入的fullAddcount
+3. 初始化：CounterCells 如果是空，则进行初始化，初始大小默认为2个，这里初始化了2个，但只赋值了一个，所以另外一个 CounterCells[n]=null，这将匹配到另外一个分支去执行
+4. fullAddCount 有种思想：对于 CAS 失败的，总是存了善心，给他们改过的机会 —— 进行 rehash。
+5. 如果内部 CAS 失败，则尝试扩容，扩容的边界是 CounterCells # length < NCPU（CPU核数），因为理想情况下，一个 CPU 核数执行一个线程，而每个线程能够到 hash 到各自的 cell 上，冲突性低
+6. 最终fullAddCount 还考虑到如果 CounterCell 发生了未知情况无法处理时，baseCount来保证数据正确。
+7. ![](/技术学习流程/pic/2023-11-03-16-14-50.png)
 
 
 

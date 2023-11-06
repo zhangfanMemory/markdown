@@ -182,8 +182,8 @@ Lock:
    wait是要释放对象锁，进入等待池；既然是释放对象锁，那么肯定是先要获得锁。所以wait必须要写在synchronized代码块中，否则会报异常。
    **notify()或者notifyAll()调用时并不会真正释放对象锁, 必须等到synchronized方法或者语法块执行完才真正释放锁.**
    notify在源码中的注视是随机唤醒线程，但是具体是依赖与实现，在hotspot的JVM中；但是在hotspot对notofy()的实现并不是我们以为的随机唤醒, 而是“先进先出”的顺序唤醒!
-   wait：释放锁并且释放cpu
-   sleep: 不会释放锁，但是会释放cpu
+   wait：释放锁，都会释放cpu
+   sleep: 不会释放锁，都会释放cpu
 3. countdownLunch
    1. countdown() + await()
    ```java
