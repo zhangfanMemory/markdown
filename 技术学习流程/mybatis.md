@@ -46,3 +46,9 @@ mybatis的mapper代理对象如何生成的
 4. 会根据调用的方法名称和参数类型，在Configuration对象中查找对应的MapperMethod对象。然后，invoke()方法会执行MapperMethod中定义的SQL语句，并将执行结果返回给调用者。
 
 
+## 随笔
+每当我们使用 MyBatis 开启一次和数据库的会话，MyBatis 都会创建出一个 SqlSession 对象，表示与数据库的一次会话，而每个 SqlSession 都会创建一个 Executor 对象
+
+如下图所示，MyBatis 的一次会话：在一个 SqlSession 会话对象中创建一个localCache本地缓存，对于每一次查询，都会根据查询条件尝试去localCache本地缓存中获取缓存数据，如果存在，就直接从缓存中取出数据然后返回给用户，否则访问数据库进行查询，将查询结果存入缓存并返回给用户（如果设置的缓存区域为STATEMENT，默认为SESSION，在一次会话中所有查询执行后会清空当前 SqlSession 会话中的localCache本地缓存，相当于“关闭”了一级缓存）
+
+![](/技术学习流程/pic/2023-11-24-11-51-24.png)
