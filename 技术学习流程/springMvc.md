@@ -123,7 +123,8 @@ Root WebApplicationContext 和 Servlet WebApplicationContext 容器，它们是�
       1. 由 Servlet 3.0 提供 API 获取请求中的 javax.servlet.http.Part 对象，然后进行解析，文件会封装成 StandardMultipartFile 对象
    2. CommonsMultipartResolver
       1. 基于 Apache Commons FileUpload 的 MultipartResolver 实现类
-      2. 通过 Commons FileUpload 组件实现，将文件封装成CommonsMultipartFile
+      2. 通过 Commons FileUpload 组件实现，将文件封装
+      3. 成CommonsMultipartFile
 3. 封装成 MultipartHttpServletRequest 对象便于获取参数信息和操作上传的文件即（MultipartFile 对象）
 
 #### AbstractHandlerMapping
