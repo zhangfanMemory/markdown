@@ -28,7 +28,7 @@
 4. 对应关系是一对一的关系
 
 ## mybtais 执行sql 的具体流程
-1. 读取mybatis-congig.xml（mybatis的配置文件） 和 mapper.xml（映射文件，定义了java与sql语句对应关系）
+1. 读取mybatis-config.xml（mybatis的配置文件） 和 mapper.xml（映射文件，定义了java与sql语句对应关系）
 2. 生成sqsessionFactory（主要用于生成sqlsession）
 3. 执行sqsessionFactory.openSession(),开启一个sqlsession
 4. 解析映射文件，在创建sqlsession时候会将java和sql语句映射关系存在内存中

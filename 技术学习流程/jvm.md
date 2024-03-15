@@ -131,7 +131,7 @@ g1跟cms前几种流程类似：初始标记，并发标记最终标记，筛选
 1.9: g1
 
 ## G1的流程
-rigion，没有明显的区分年轻老年代，每个regin区1～32M，没有太小，如果超过一半的region会讲区域标记为H区，超过一个reigen区的用两个region存储并标记为H区
+rigion，没有明显的区分年轻老年代，每个regin区1～32M，没有太小，如果超过一半的region会将区域标记为H区，超过一个reigen区的用两个region存储并标记为H区
 Rset：regien包含Rset，存的是old区谁引用了该reigen，扫描时候可以不用全量扫描，
 Cset：存储的是需要被回收的对象
 
