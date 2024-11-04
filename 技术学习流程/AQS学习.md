@@ -17,6 +17,8 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
 
 ![核心原理图](/技术学习流程/pic/2023-04-02-17-17-21.png)
 
+a
+
 ### 第一个核心点state
 AQS 使用 int 成员变量 **state 表示同步状态**，通过内置的 线程等待队列 来完成获取资源线程的排队工作。
 state 变量由 **volatile** 修饰，用于展示当前临界资源的获锁情况。
