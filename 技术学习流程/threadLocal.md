@@ -1,13 +1,13 @@
 # THREADLOCAL
-![](/技术学习流程/pic/2023-07-30-19-33-16.png)
+![](pic/2023-07-30-19-33-16.png)
 1. 理解：每个线程会持有threadlocalMap；
 2. 可以创建多个threadlocal对象
 3. threadlocalmap是一个entry的数组
-   1. ![](/技术学习流程/pic/2023-07-30-19-41-27.png)
-   2. ![](/技术学习流程/pic/2023-07-30-19-43-26.png)
+   1. ![](pic/2023-07-30-19-41-27.png)
+   2. ![](pic/2023-07-30-19-43-26.png)
    3. 根据当前线程找到当前现成的threadlocalma的entry的数组
 4. entry<THREADLOCAL-WEAK引用， 存的值>
-   1. ![](/技术学习流程/pic/2023-07-30-19-44-30.png)
+   1. ![](pic/2023-07-30-19-44-30.png)
    2. KEY:threadlocal对象的弱引用
    3. value：你存的值   
 5.      Thread t = Thread.currentThread();

@@ -1,4 +1,4 @@
-![](/技术学习流程/pic/2023-11-02-15-39-16.png)
+![](pic/2023-11-02-15-39-16.png)
 # producer
 1. KafkaProducer是线程安全的，可以在多个线程中共享单个KafkaProducer实例
 2. 数据发送流程 ->对象 >拦截器 >序列化 >分区器 >broker
@@ -42,7 +42,7 @@
       4. ProducerinterceptorPrefix impl Producerlnterceptor
          1. 启动producer中可以 properties.put(ProducerConf.INTERCEPTOR_CLASSES_CONFIG ,ProducerinterceptorPrefix.class.getName());
    7. 发送的整体框架
-      1. ![](/技术学习流程/pic/2023-11-02-16-43-39.png)
+      1. ![](pic/2023-11-02-16-43-39.png)
       2. 两个主要线程主线程/sender线程
          1. 主线程：主要使用了消息累加器，消息累加器，默认32M
             1. 为每个partation都维护了一个队列
@@ -53,8 +53,8 @@
             4. 元数据的更新 元数据：集群中有哪些主题，这些主题有哪些分区，每个分区的lead副本分配在哪个节点上，follower副本分配在哪些节点上
 
 # consumer
-1. ![消费者模型](/技术学习流程/pic/2023-11-02-17-34-47.png) 
-2. ![过多消费者](/技术学习流程/pic/2023-11-02-17-35-33.png)
+1. ![消费者模型](pic/2023-11-02-17-34-47.png) 
+2. ![过多消费者](pic/2023-11-02-17-35-33.png)
 3. 消费者流程
    1. 配置参数 -> 订阅主题 -> 拉去消息并消费 -> 提交位移 -> 关闭消费者
 
@@ -95,7 +95,7 @@
             1. 一次的消费，处理一半，然后异常，位移没提交，然后就会产生重复消费
       2. 消息丢失
          1. 消费了x+6提交偏移量，处理线程只处理了x+3，然后冲x+7开始重新拉取，导致了x+3 - x+6数据丢失
-         2. ![](/技术学习流程/pic/2023-11-02-19-32-17.png)
+         2. ![](pic/2023-11-02-19-32-17.png)
       3. 手动提交
             1. 同步：commitsync：以每次poll下的数据，的最后一条作为position提交
             2. 异步：commitAsync：public void commitAsync{OffsetCommitCallback callback}
@@ -125,7 +125,7 @@
       2. consumer中的每个公用方法在执行所要执行的动作之前都会调用这个acquire()方法，只有wakeup()方法是个例外
          1. 通过wakeup可以做到判断kafka是否还在运行
             1. while (isRunning. get()) {}
-         2. ![](/技术学习流程/pic/2023-11-02-20-24-07.png)每个consumer创建一个线程 -> 创建线程池来处理
+         2. ![](pic/2023-11-02-20-24-07.png)每个consumer创建一个线程 -> 创建线程池来处理
    8. 一些参数
       1. fetch .min .bytes ： 一次拉取最小数量默认1B
       2. fetch .max.bytes ：一次拉取最大数量 默认50M

@@ -1,13 +1,13 @@
 #  springMvc
 ## WebApplicationContext容器的初始化
 ### Root WebApplicationContext 容器
-![](/技术学习流程/pic/2023-11-25-21-44-56.png)
+![](pic/2023-11-25-21-44-56.png)
 root WebApplicationContext 通过ContextLoaderListener 监听到 Servlet 容器启动事件，则调用父类 ContextLoader 的 initWebApplicationContext(ServletContext servletContext) 方法，初始化 root WebApplicationContext 容器
 默认使用：org.springframework.web.context.WebApplicationContext=org.springframework.web.context.support.**XmlWebApplicationContext**
 
 ### Servlet WebApplicationContext 容器
 除了会初始化一个 Root WebApplicationContext 容器外，注入一个 DispatcherServlet 对象，初始化该对象的过程也会初始化一个 Servlet WebApplicationContext 容器
-![](/技术学习流程/pic/2023-11-25-21-52-26.png)
+![](pic/2023-11-25-21-52-26.png)
 HttpServletBean ： 负责将 ServletConfig 设置到当前 Servlet 对象中
 FrameworkServlet： 负责初始化 Servlet WebApplicationContext 容器；该类覆写了 doGet、doPost 等方法，并将所有类型的请求委托给 doService 方法去处理，doService 是一个抽象方法，需要子类实现
 DispatcherServlet： 负责初始化 Spring MVC 的各个组件，以及处理客户端的请求，协调各个组件工作
@@ -43,7 +43,7 @@ FrameworkServlet.initServletBean:当前主要是初始化Servlet WebApplicationC
 #### DispatcherServlet
 
 ##### DispatcherServlet流程图
-![](/技术学习流程/pic/2023-11-27-17-42-49.png)
+![](pic/2023-11-27-17-42-49.png)
 
 DispatcherServlet.onRefresh() -> initStrategies(context):初始化9大组建
 ```java 
@@ -75,19 +75,19 @@ Root WebApplicationContext 和 Servlet WebApplicationContext 容器，它们是�
 
 
 ## 9大组建
-![](/技术学习流程/pic/2023-11-25-22-20-51.png)
+![](pic/2023-11-25-22-20-51.png)
 1. 请求怎么来的：
    1. HttpServlet 的：doGet / doPost /doDelete .....
    2. FrameworkServlet 覆写上述方法
    3. FrameworkServlet 的 service(HttpServletRequest request, HttpServletResponse response) 方法，用于处理请求
    4. 最终调用方法：processRequest() ->doService()
-   5. ![](/技术学习流程/pic/2023-11-25-22-24-46.png)
+   5. ![](pic/2023-11-25-22-24-46.png)
    6. **doService - 〉 doDispatch**（开始进入DispatcherServlet）
 
 ## doDispatch
-![](/技术学习流程/pic/2023-11-27-17-52-33.png)
-![](/技术学习流程/pic/2023-11-27-17-54-35.png)
-![](/技术学习流程/pic/2023-11-27-17-55-16.png)
+![](pic/2023-11-27-17-52-33.png)
+![](pic/2023-11-27-17-54-35.png)
+![](pic/2023-11-27-17-55-16.png)
 1. 检测请求是否为上传请求，如果是则通过 multipartResolver 将其封装成 MultipartHttpServletRequest 对象
    1. 使用checkMultipart - >通过multipartResolver -> 变成MultipartHttpServletRequest
 2. 获得请求对应的 HandlerExecutionChain 对象（HandlerMethod 和 HandlerInterceptor 拦截器们
@@ -114,8 +114,8 @@ Root WebApplicationContext 和 Servlet WebApplicationContext 容器，它们是�
 在 Spring Boot 中，multipartResolver 默认为 **StandardServletMultipartResolver** 实现类；基于Servlet 3.0 标准的上传文件 API 的 MultipartResolver 实现类
 
 通过StandardServletMultipartResolver 解析HttpServletRequest 变成 StandardMultipartHttpServletRequest
-![](/技术学习流程/pic/2023-11-27-18-08-23.png)
-![](/技术学习流程/pic/2023-11-27-18-08-49.png)
+![](pic/2023-11-27-18-08-23.png)
+![](pic/2023-11-27-18-08-49.png)
 总结：
 1. MultipartResolver 对请求的 Content-Type 为 multipart/* 处理
 2. 通过 MultipartResolver 组件对请求进行转换处理
@@ -131,45 +131,45 @@ Root WebApplicationContext 和 Servlet WebApplicationContext 容器，它们是�
 **HandlerMapping 组件，请求的处理器匹配器，负责为请求找到合适的 HandlerExecutionChain 处理器执行链，包含处理器（handler）和拦截器们（interceptors）**
 **handler**：处理器是Object类型，可以将其理解成HandlerMethod对象（例如我们使用最多的@RequestMapping注解所标注的方法会解析成该对象），包含了方法的所有信息，通过该对象能够执行该方法
 **HandlerInterceptor**：拦截器对处理请求进行增强处理，可用于在执行方法前、成功执行方法后、处理完成后进行一些逻辑处理
-![](/技术学习流程/pic/2023-12-03-17-38-02.png)
+![](pic/2023-12-03-17-38-02.png)
 通过HandlerMapping 获取链路是有顺序的，获取奥chain后就不会后面的遍历 
 BeanNameUrlHandlerMapping -> RequestMappingHandlerMapping
-![](/技术学习流程/pic/2023-12-03-17-43-34.png)
+![](pic/2023-12-03-17-43-34.png)
 红色框用于解析：@RequestMapping
-黄色框通过配置文件配置url路径![](/技术学习流程/pic/2023-12-03-17-47-06.png)
-initHandlerMappings： 两个默认实现类![](/技术学习流程/pic/2023-12-03-18-14-22.png)
+黄色框通过配置文件配置url路径![](pic/2023-12-03-17-47-06.png)
+initHandlerMappings： 两个默认实现类![](pic/2023-12-03-18-14-22.png)
 **gettHandler**
 getHandler(HttpServletRequest request) 方法，获得请求对应的 HandlerExecutionChain 处理器执行链，包含处理器（handler）和拦截器们（interceptors）
-![](/技术学习流程/pic/2023-12-03-19-56-25.png)
+![](pic/2023-12-03-19-56-25.png)
 总结：AbstractHandlerMapping 抽象类，作为一个基类，实现了“为请求找到合适的 HandlerExecutionChain 处理器执行链”对应的的骨架逻辑，而暴露 **getHandlerInternal(HttpServletRequest request)** 抽象方法，交由子类实现。
 这个获取handler后面痛过getHandlerExecutionChain 获取处理器和过滤器：HandlerExecutionChain
 
 #### HandlerInterceptor
 HandlerInterceptor 拦截器对处理请求进行增强处理，可用于在执行方法前、成功执行方法后、处理完成后进行一些逻辑处理
-![](/技术学习流程/pic/2023-12-03-20-03-31.png)
+![](pic/2023-12-03-20-03-31.png)
 springboot中
-![](/技术学习流程/pic/2023-12-03-20-18-22.png)
-![](/技术学习流程/pic/2023-12-03-20-20-10.png)
-![](/技术学习流程/pic/2023-12-03-20-21-35.png)
+![](pic/2023-12-03-20-18-22.png)
+![](pic/2023-12-03-20-20-10.png)
+![](pic/2023-12-03-20-21-35.png)
 
 #### AbstractHandlerMethodMapping
 该系是基于 Method 进行匹配。例如，我们所熟知的 @RequestMapping 等注解的方式。一共就三个类，不多😈😈😈（红色框）
-![](/技术学习流程/pic/2023-12-03-20-23-25.png)
-![](/技术学习流程/pic/2023-12-03-20-32-19.png)
+![](pic/2023-12-03-20-23-25.png)
+![](pic/2023-12-03-20-32-19.png)
 createHandlerMethod：创建
-![](/技术学习流程/pic/2023-12-03-20-43-47.png)
-![](/技术学习流程/pic/2023-12-03-20-46-19.png)
+![](pic/2023-12-03-20-43-47.png)
+![](pic/2023-12-03-20-46-19.png)
 
 #### AbstractUrlHandlerMapping
-![](/技术学习流程/pic/2023-12-03-20-51-23.png)
+![](pic/2023-12-03-20-51-23.png)
 registerHandler：
    registerHandler(String[] urlPaths, String beanName) 方法，注册多个 URL 的处理器，方法如下：
 
-![](/技术学习流程/pic/2023-12-03-20-55-30.png)
-![](/技术学习流程/pic/2023-12-03-20-57-16.png)
+![](pic/2023-12-03-20-55-30.png)
+![](pic/2023-12-03-20-57-16.png)
 
 ##### SimpleUrlHandlerMapping
-![](/技术学习流程/pic/2023-12-03-21-00-46.png)
+![](pic/2023-12-03-21-00-46.png)
 ##### BeanNameUrlHandlerMapping
-![](/技术学习流程/pic/2023-12-03-21-01-14.png)
-![](/技术学习流程/pic/2023-12-03-21-05-51.png)
+![](pic/2023-12-03-21-01-14.png)
+![](pic/2023-12-03-21-05-51.png)
